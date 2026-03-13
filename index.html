@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عجلة حبوه</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #991b1b; 
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            filter: blur(0px);
+            transition: filter 0.3s ease;
+        }
+
+        .game-blurred {
+            filter: blur(8px);
+            pointer-events: none;
+        }
+
+        .header-section {
+            margin-bottom: 20px;
+            z-index: 50;
+        }
+
+        .main-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            z-index: 20;
+            margin-bottom: -150px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #wheelCanvas {
+            border-radius: 50%;
+            border: 10px solid #facc15; 
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1);
+            background-color: white;
+        }
+
+        /* المؤشر العلوي */
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: #ffffff; 
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 60;
+            border: 2px solid #991b1b;
+        }
+
+        /* زر اللف في منتصف العجلة */
+        .spin-btn-center {
+            position: absolute;
+            z-index: 100;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: #ffffff; /* أبيض */
+            border: 6px solid #facc15; /* أصفر */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+
+        .spin-btn-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .spin-btn-center:active {
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+
+        .spin-btn-center:disabled {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* الدائرة الحمراء الداخلية للزر */
+        .spin-btn-inner {
+            width: 30px;
+            height: 30px;
+            background: #991b1b; /* أحمر */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .character-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .character-img {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.3));
+        }
+
+        .attempts-badge {
+            background: #ffffff;
+            color: #991b1b;
+            padding: 8px 25px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 50;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(153, 27, 27, 0.95);
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            backdrop-filter: blur(8px);
+            padding: 20px;
+        }
+
+        .active-modal {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2.5rem 2rem;
+            border-radius: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border-bottom: 8px solid #991b1b;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 2px solid #f3f4f6;
+            border-radius: 15px;
+            outline: none;
+            text-align: right;
+            font-size: 1rem;
+        }
+
+        .modal-grandma {
+            width: 140px;
+            height: auto;
+            margin: -100px auto 15px auto;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.2));
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- شاشة التسجيل -->
+    <div id="authModal" class="modal active-modal">
+        <div class="modal-content">
+            <!-- استخدام الصورة الجديدة -->
+            <img src="Asset 7@4x-8.jpg" alt="الجدة حبوه" class="modal-grandma">
+            <h2 class="text-3xl font-black text-red-900 mb-2">عجلة حبوه</h2>
+            <p class="text-gray-600 mb-6 text-sm">سجل بياناتك لتدخل السحب على ألذ أنواع المعمول</p>
+            
+            <input type="text" id="userName" class="form-input" placeholder="اسمك الكريم" required>
+            <input type="tel" id="userPhone" class="form-input" placeholder="رقم هاتفك" required>
+            
+            <button onclick="submitRegistration()" class="w-full mt-4 bg-red-700 text-white py-4 rounded-2xl font-black text-xl hover:bg-red-800 transition shadow-lg active:scale-95">
+                دخول السحب
+            </button>
+        </div>
+    </div>
+
+    <!-- واجهة اللعبة -->
+    <div id="mainContent" class="game-container game-blurred">
+        <div class="header-section">
+            <h1 class="main-title">عجلة حبوه</h1>
+        </div>
+
+        <div class="wheel-wrapper">
+            <div class="pointer"></div>
+            
+            <!-- زر اللف في منتصف العجلة -->
+            <div id="spinBtn" class="spin-btn-center">
+                <div class="spin-btn-inner"></div>
+            </div>
+            
+            <canvas id="wheelCanvas" width="400" height="400"></canvas>
+        </div>
+
+        <div class="character-container">
+            <!-- استخدام الصورة الجديدة هنا أيضاً -->
+            <img src="Asset 7@4x-8.jpg" alt="الجدة ترحب" class="character-img" id="mainChar">
+        </div>
+
+        <div class="attempts-badge">
+            الفرص المتبقية: <span id="attempts-count">1</span>
+        </div>
+    </div>
+
+    <!-- شاشة الفوز -->
+    <div id="winModal" class="modal">
+        <div class="modal-content border-[10px] border-red-600">
+            <!-- استخدام الصورة الجديدة هنا أيضاً -->
+            <img src="Asset 7@4x-8.jpg" alt="الجدة تهنئك" class="modal-grandma">
+            <h2 class="text-3xl font-black text-red-800 mb-2">يا بختك!</h2>
+            <p id="winnerWelcome" class="text-md text-red-600 font-bold mb-2"></p>
+            <p class="text-md mb-4 text-gray-700">حبوه تهديك:</p>
+            <div id="resultText" class="text-xl font-black text-white mb-6 py-5 px-6 rounded-2xl shadow-inner"></div>
+            <button onclick="location.reload()" class="w-full bg-red-700 text-white py-4 rounded-xl font-black text-lg hover:bg-red-800 transition">
+                بالهناء والشفاء
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const attemptsDisplay = document.getElementById('attempts-count');
+        const winModal = document.getElementById('winModal');
+        const authModal = document.getElementById('authModal');
+        const resultText = document.getElementById('resultText');
+        const mainContent = document.getElementById('mainContent');
+
+        let userData = { name: '', phone: '' };
+
+        function submitRegistration() {
+            const name = document.getElementById('userName').value.trim();
+            const phone = document.getElementById('userPhone').value.trim();
+
+            if (name === '' || phone === '') {
+                alert("يرجى ملء جميع الحقول");
+                return;
+            }
+
+            userData = { name, phone };
+            authModal.classList.remove('active-modal');
+            mainContent.classList.remove('game-blurred');
+            document.getElementById('winnerWelcome').innerText = `أهلاً بك يا ${name}`;
+        }
+
+        const maamoulData = [
+            { name: "معمول بر وتمر", color: "#802c7b" },
+            { name: "معمول دخن", color: "#124956" },
+            { name: "معمول مكسرات", color: "#44803c" },
+            { name: "معمول شوكولا", color: "#bc793b" },
+            { name: "معمول قرفة", color: "#381a0e" },
+            { name: "معمول توفي", color: "#d4ac2c" },
+            { name: "شوكولا بيضاء", color: "#6a2039" },
+            { name: "معمول بيستاشيو", color: "#7c7c32" },
+            { name: "معمول تين", color: "#135f4c" },
+            { name: "معمول جوز", color: "#966928" },
+            { name: "معمول فستق", color: "#1a6575" },
+            { name: "خلطة صحية", color: "#842b1a" }
+        ];
+
+        let currentRotation = 0;
+        let attempts = 1; 
+        let isSpinning = false;
+
+        function drawWheel() {
+            const size = canvas.width;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size / 2;
+            const sliceAngle = (2 * Math.PI) / maamoulData.length;
+
+            ctx.clearRect(0, 0, size, size);
+
+            maamoulData.forEach((item, i) => {
+                const angle = i * sliceAngle;
+                
+                ctx.beginPath();
+                ctx.fillStyle = item.color;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.lineTo(centerX, centerY);
+                ctx.fill();
+                
+                ctx.strokeStyle = "rgba(255,255,255,0.3)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + sliceAngle / 2);
+                
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "white";
+                ctx.font = "bold 13px Cairo";
+                
+                const textX = radius * 0.65; 
+                ctx.fillText(item.name, textX, 0);
+                
+                ctx.restore();
+            });
+        }
+
+        function spin() {
+            if (isSpinning || attempts <= 0 || userData.name === '') return;
+
+            isSpinning = true;
+            attempts--;
+            attemptsDisplay.innerText = attempts;
+            
+            spinBtn.style.opacity = "0.7";
+            spinBtn.style.pointerEvents = "none";
+
+            const extraDegrees = Math.floor(Math.random() * 360);
+            const totalSpin = 2160 + extraDegrees; 
+            currentRotation += totalSpin;
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                const actualDegrees = currentRotation % 360;
+                const winningIndex = Math.floor(((360 - actualDegrees + 270) % 360) / (360 / maamoulData.length));
+                
+                const winner = maamoulData[winningIndex];
+                resultText.innerText = winner.name;
+                resultText.style.backgroundColor = winner.color;
+                
+                winModal.classList.add('active-modal');
+                spinBtn.style.opacity = "1";
+                spinBtn.style.pointerEvents = "auto";
+            }, 5000);
+        }
+
+        spinBtn.addEventListener('click', spin);
+
+        window.onload = () => {
+            drawWheel();
+        };
+    </script>
+</body>
+</html>
